@@ -2,49 +2,59 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Category;
 use App\Http\Resources\CategoryResource;
+use Illuminate\Support\Facades\Validator;
 
-class CategoryAPIController extends Controller
+class CategoryAPIController extends ApiController
 {
     public function index()
     {
         $categories = Category::get();
-        $res = [
-            'message' => 'Category list',
-            'data' => CategoryResource::collection($categories),
-            'statusCode' => 200
-        ];
-        return response()->json($res);
+        return $this->sendSuccess(
+            CategoryResource::collection($categories),
+            'Category list'
+        );
     }
 
     public function store(Request $request)
     {
-        $category = Category::create($request->all());
-        $res = [
-            'message' => 'Category is stored',
-            'data' => [
-                new CategoryResource($category)
-            ],
-            'statusCode' => 200
-        ];
-        return response()->json($res);
+        $data = $request->all();
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|unique:categories|min:3|max:50'
+        ]);
+        if ($validator->fails()) {
+            return $this->sendError(
+                'Failed validation',
+                422,
+                $data
+            );
+        }
+
+        $category = Category::create($data);
+        return $this->sendSuccess(
+            [new CategoryResource($category)],
+            'Category is stored'
+        );
     }
 
     public function update(Category $category, Request $request)
     {
         $category->title = $request->get('title');
         $category->save();
-        return response()->json($category);
+        return $this->sendSuccess(
+            [new CategoryResource($category)],
+            'Category is updated'
+        );
     }
 
     public function destroy(Category $category, Request $request)
     {
         $category->delete();
-        return response()->json([
-            'message' => 'Category was deleted'
-        ]);
+        return $this->sendSuccess(
+            [],
+            'Category is deleted'
+        );
     }
 }
